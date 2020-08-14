@@ -3,7 +3,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ## ----eval=FALSE---------------------------------------------------------------
-## install.packages("remotes") # if not already installed
+## if (!require(remotes))
+##   install.packages("remotes")
 ## remotes::install_github("r-spatial/stars")
 
 

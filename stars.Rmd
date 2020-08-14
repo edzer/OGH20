@@ -25,7 +25,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 For the exercises it is best to install a fresh copy of `stars`, using
 ```{r eval=FALSE}
-install.packages("remotes") # if not already installed
+if (!require(remotes))
+  install.packages("remotes")
 remotes::install_github("r-spatial/stars")
 ```
 
@@ -354,13 +355,13 @@ where the area intersecting with `ne` is selected (masked / cropped); note that
 
 Tidyverse verbs are partly supported by `stars`, see [this vignette](https://r-spatial.github.io/stars/articles/stars3.html):
 
-|=======|===================================================|
-| slice | select dimension values using index               |
-| filter| select dimension values using dimension values    |
-| pull  | pull out an attribute                             |
-| select| select one or more attributes                     |
-| mutate| compute new attributes based on existing ones     |
-|=======|===================================================|
+|command | meaning                                           |
+|:-------|:--------------------------------------------------|
+|`slice` | select dimension values using index               |
+|`filter`| select dimension values using dimension values    |
+|`pull`  | pull out an attribute                             |
+|`select`| select one or more attributes                     |
+|`mutate`| create new attributes based on existing ones      |
 
 
 #### aggregating, extracting
