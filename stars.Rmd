@@ -298,20 +298,64 @@ s2 = paste0("SENTINEL2_L1C:/vsizip/", granule,
 
 We can control whether a `stars_proxy` object is returned by setting e.g. `proxy = TRUE`; the current default is to return proxy objects when the number of cells is larger than $10^8$.
 
-Operations on proxy objects are **lazy**, that means that they are postponed up to the moment that grid cells are needed (i.e. to plot, or to write). For instance in the following sequence,
+Operations on proxy objects are **lazy**, that means that reading data and computing are postponed to the moment grid cells are needed (i.e. to plot, to write, or convert to `stars`). For instance in the following sequence,
 
 ```{r}
 ndvi = function(x) (x[4]-x[1])/(x[4]+x[1])
-p.ndvi = st_apply(p, c("x", "y"), ndvi)
+(p.ndvi = st_apply(p, c("x", "y"), ndvi)) # doesn't actually do anything, yet
 plot(p.ndvi)
 ```
 
-the actual order of operations is reversed:
+the actual order of operations that is carried out is:
 
 * when `plot(p.ndvi)` is called, nothing has been computed yet
-* `plot.stars_proxy` evaluates what needs to be done; since many more pixels are present in the image then there are available on the plotting device, and since `ndvi` is applied pixel-wise, it only has to 
-    * read the pixels at screen resolution
-	* compute ndvi for those pixels
-* this leads to a speed-up from 10 minutes (for all available pixels) to a few seconds (for visible pixels)
+* `plot.stars_proxy` evaluates what needs to be done: 
+    * since many more pixels are present in the image then there are available on the plotting device, and since `ndvi` is applied pixel-wise, it can downsample (read at lower resolution) _before_ applying `nvdvi`
+    * it then reads the pixels at screen resolution
+	* it computes ndvi for the pixels read
+	* it plots them
+* this leads to a speed-up from 10 minutes (for all available pixels) to a few seconds (for visible pixels), in particular for data formats that carry overviews ([image pyramid](https://en.wikipedia.org/wiki/Pyramid_(image_processing))).
 
+This processing pattern is familiar to those who have worked with e.g. Google Earth Engine.
 
+## Full example using single scene from Marius' L8 data:
+
+This is to show how much (or little?) work it is to create a single
+`stars` data cube, in memory, from a set of Landsat 8 scenes, which
+were prepared (aggregated to 300 m, selected) for Marius' EO datacube
+session, the zip was unpacked in the current working directory:
+
+```{r eval=TRUE}
+dirs = list.dirs(".")
+dirs = dirs[grepl("./LC08229064", dirs)] # those starting with ./LC08229064 : an L8 scene
+f = list.files(dirs, pattern = "*band[1-7].tif", full.names = TRUE)
+
+# to save memory, we continuously overwrite an object called "l":
+l = lapply(f, function(x) read_stars(x, proxy=FALSE))
+# the scenes don't line up 100%, so we need to warp them to the geometry of the first:
+for (i in 2:length(l))
+	l[[i]] = st_warp(l[[i]], l[[1]])
+l = do.call(c, l) # every band is an attribute, with ugly names:
+names(l)[1:3]
+
+# get dates from scene name:
+d = as.Date(substr(names(l), 18, 25), format = "%Y%m%d")
+d[1:3]
+# get band from scene name:
+band = substr(names(l), 45, 49)
+band[1:7]
+
+# throw all bands in a dimension:
+(l = merge(l))
+
+di =  st_dimensions(l)
+di[3] = NULL # remove the third attribute
+# the order in which we add these dimensions matters; band cycles fastest, so will be added last:
+di$date = stars:::create_dimension(values = unique(d))
+di$band = stars:::create_dimension(values = unique(band))
+
+(l = st_redimension(l, di))
+
+plot(adrop(l[,,,1,]))
+plot(l[,,,,1])
+```
