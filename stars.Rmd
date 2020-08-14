@@ -270,12 +270,15 @@ Suppose we had worked with population rather than population _density_, this war
 ## Raster data cubes: time and multiple attributes
 
 
-
 ## Other operations on data cubes
 
 ### subsetting
 
 ### tidy verbs
+
+### cropping
+
+### aggregating, extracting
 
 ## From raster to vector, vector to raster
 
