@@ -269,20 +269,112 @@ Suppose we had worked with population rather than population _density_, this war
 
 ## Raster data cubes: time and multiple attributes
 
+A lot of Earth observation and modelling data from domains such as
+weather, climate, hydrology, oceanography come with a time dimension.
+Quite commonly, data cubes are stored in NetCDF (or HDF4, HDF5) formats.
+We have two examples; the first is a time series with two attributes,
+concerning monthly total precipitation, downscaled from CMIP:
+
+```{r}
+(w <- system.file("nc/bcsd_obs_1999.nc", package = "stars") %>%
+    read_stars("data/full_data_daily_2013.nc"))
+plot(w)
+```
+
+The second concerns a time series split over multiple files,
+```{r}
+x = c(
+"avhrr-only-v2.19810901.nc",
+"avhrr-only-v2.19810902.nc",
+"avhrr-only-v2.19810903.nc",
+"avhrr-only-v2.19810904.nc",
+"avhrr-only-v2.19810905.nc",
+"avhrr-only-v2.19810906.nc",
+"avhrr-only-v2.19810907.nc",
+"avhrr-only-v2.19810908.nc",
+"avhrr-only-v2.19810909.nc"
+)
+# see the second vignette:
+# install.packages("starsdata", repos = "http://pebesma.staff.ifgi.de", type = "source")
+file_list = system.file(paste0("netcdf/", x), package = "starsdata")
+(y = read_stars(file_list, quiet = TRUE))
+```
+This variable contains a singular dimension, `zlev`, which we can remove using `adrop`:
+```{r}
+(z = adrop(y))
+```
+
+which we can for instance plot with ggplot:
+```{r}
+library(ggplot2)
+library(viridis)
+## Loading required package: viridisLite
+library(ggthemes)
+ggplot() +
+  geom_stars(data = z[1], alpha = 0.8, downsample = c(10, 10, 1)) +
+  facet_wrap("time") +
+  scale_fill_viridis() +
+  coord_equal() +
+  theme_map() +
+  theme(legend.position = "bottom") +
+  theme(legend.key.width = unit(2, "cm"))
+```
+
+A more challenging example involving Landsat 8 imagery is shown at the end of this tutorial.
 
 ## Other operations on data cubes
 
-### subsetting
+#### subsetting
 
-### tidy verbs
+Subsetting is done using `[`, where the first argument concerns
+attributes, the others subsequent dimensions.
 
-### cropping
+```{r}
+y[2] # second attribute
+y[,1:10,1:12] # x/y region
+y[,,,1] # zlev
+y[,,,,3:5] # time
+```
 
-### aggregating, extracting
+Subsetting can also be used to shortcut intersections, as in
+```{r eval=FALSE}
+x = st_as_stars() # global, 1 degree grid
+plot([ne])
+```
+where the area intersecting with `ne` is selected (masked / cropped); note that
+`ne` crosses the dateline, and a southern country is included.
+
+
+
+#### cropping
+
+`st_crop` crops a raster, possibly masking (NA-ing) cells outside a given polygonal area.
+
+#### tidy verbs
+
+Tidyverse verbs are partly supported by `stars`, see [this vignette](https://r-spatial.github.io/stars/articles/stars3.html):
+
+|=======|===================================================|
+| slice | select dimension values using index               |
+| filter| select dimension values using dimension values    |
+| pull  | pull out an attribute                             |
+| select| select one or more attributes                     |
+| mutate| compute new attributes based on existing ones     |
+|=======|===================================================|
+
+
+#### aggregating, extracting
+
+`stars` has an `aggregate` method that lets you do spatial or
+temporal aggregations of `stars` objects, such as averaging over
+a set of polygons.
+
+`st_extract` extracts pixel values at a set of given `POINT`
+locations.
 
 ## From raster to vector, vector to raster
 
-We saw an example of `st_rasterize` above, which rasterizes polygon data to `stars` rasters. `st_as_sf` does the reverse; 
+We saw an example of `st_rasterize` above, which rasterizes polygon data to `stars` rasters. `st_as_sf` does the reverse. `st_as_sf` can create points for raster cells, or square polygons, or join raster cells with identical cell values ("polygonize").
 
 ## Proxy objects, lazy reading and computing
 
@@ -325,7 +417,7 @@ This is to show how much (or little?) work it is to create a single
 were prepared (aggregated to 300 m, selected) for Marius' EO datacube
 session, the zip was unpacked in the current working directory:
 
-```{r eval=TRUE}
+```{r eval = TRUE}
 dirs = list.dirs(".")
 dirs = dirs[grepl("./LC08229064", dirs)] # those starting with ./LC08229064 : an L8 scene
 f = list.files(dirs, pattern = "*band[1-7].tif", full.names = TRUE)
@@ -356,6 +448,11 @@ di$band = stars:::create_dimension(values = unique(band))
 
 (l = st_redimension(l, di))
 
+# select a time slice and see all bands:
 plot(adrop(l[,,,1,]))
+# select a band and see a time series of that band
 plot(l[,,,,1])
+# reduce dimension "band" to an index (ndvi) and show its time series:
+# ndvi = function(x) ifelse(x[5] < 1 || x[4] < 1, NA, (x[4]-x[3])/(x[4]+x[3]))
+# plot(st_apply(l, 1:3, ndvi), breaks = "equal")
 ```
