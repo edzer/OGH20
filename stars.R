@@ -241,12 +241,13 @@ di$date = stars:::create_dimension(values = unique(d))
 di$band = stars:::create_dimension(values = unique(band))
 
 (l = st_redimension(l, di))
+l[l < 0] = NA # remove all NA cells
 
-# select a time slice and see all bands:
+# select a single time slice and show all bands:
 plot(adrop(l[,,,1,]))
 # select a band and see a time series of that band
 plot(l[,,,,1])
 # reduce dimension "band" to an index (ndvi) and show its time series:
-# ndvi = function(x) ifelse(x[5] < 1 || x[4] < 1, NA, (x[4]-x[3])/(x[4]+x[3]))
-# plot(st_apply(l, 1:3, ndvi), breaks = "equal")
+ndvi = function(x) (x[5]-x[4])/(x[5]+x[4])
+plot(st_apply(l, 1:3, ndvi), breaks = "equal")
 
