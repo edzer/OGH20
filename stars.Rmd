@@ -149,12 +149,17 @@ See section 4.3.2 [here](https://keen-swartz-3146c4.netlify.app/raster.html#data
 
 Why don't we work on regular `data.frame` or `tbl_df` tables?
 
-* with arrays, it is immediately clear where the missing values are; with tables the records with
-missing values may be missing (and not NA filled)
+* with arrays, it is immediately clear where the missing values are; with tables the "empty" records 
+may be omitted (and not `NA` or 0 filled)
 * with tables, you may have duplicate records; no such thing with arrays
 * with tables, order of records is not given a priori; with arrays lookup is much faster, as each dimensions gives an _index_
 * with arrays you can directly operate over a dimension, or reduce it (e.g. taking the time mean); with tables this is much harder.
 * vector data cubes arise naturally when sampling raster data cubes (up next), or aggregating raster data cubes over polygons
+
+Why not?
+
+* tables may be more efficient, memory-wise, if an array is very sparse (many `NA` or 0 values)
+* rather than be smart, use raw power (Google Big Query GIS; look how Carto analyses raster as vector data)
 
 ## Raster data cubes: raster layer
 
@@ -167,8 +172,8 @@ Note that:
 
 * raster files are data cubes: the attribute has values for _all combinations of_ a set of x and y values
 * where vector data cubes have x/y space features in a _single_ dimension, raster data cubes spread x and y over _two_ (x-y raster cells) or _three separate_ (x-y-z voxels) dimensions.
-* this is a _regular_ grid: `offset` and `delta` are filled, and geographic coordinates can be computed, e.g. for the x dimension, from 1-based cell index $i$ by $x = \mbox{offset} + (i-1) * \mbox{delta}$
-* index 1 gives the edge, and 1.5 the center of the first grid cell.
+* this particular example is a _regular_ grid: `offset` and `delta` are filled, and geographic coordinates can be computed, e.g. for the x dimension, from 1-based cell index $i$ by $$x_i = \mbox{offset}_x + (i-1) * \mbox{delta}_x$$
+* this way, index 1 gives the _edge_, and 1.5 the _center_ of the first grid cell.
 * `delta` for `y` is typically negative: going south row indexes increase while y coordinates decrease
 * the dimensions have a `refsys` (here: a deprecated Proj4 string), allowing a match to other world coordinates (e.g. plotting with leaflet/mapview)
 * what you _see_ are the non-NA cells, the NA cells are not drawn, but they are there; we can show them by converting to features, drawing cell borders grey: 
