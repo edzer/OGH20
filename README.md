@@ -13,4 +13,9 @@ large number of examples to illustrate this idea, mostly focusing
 on the packages `stars` and `sf` and those supporting their classes
 (like tmap, mapview, gstat, ggplot2).
 
-Slides: https://edzer.github.com/OGH20
+Slides: 
+
+* https://edzer.github.com/OGH20
+* training.Rmd slides: https://edzer.github.com/OGH20/training.html
+
+

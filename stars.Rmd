@@ -34,7 +34,7 @@ remotes::install_github("r-spatial/stars")
 
 and to install `starsdata`, which is about 1 Gb in size (don't forget to remove afterwards):
 ```{r eval=FALSE}
-install.packages("starsdata", repos = "http://gis-bigdata.uni-muenster.de/pebesma", type = "source")
+install.packages("starsdata", repos = "https://gis-bigdata.uni-muenster.de/pebesma", type = "source")
 ```
 
 ## What are data cubes?

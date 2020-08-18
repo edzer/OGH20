@@ -1,0 +1,189 @@
+---
+title: "stars/sf training"
+author: "Edzer Pebesma"
+date: "8/18/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Downloading data
+```{r}
+download.file("https://opengeohub.org/spcg2020_train_data.rds", 
+							"spg2020_train_data.rds")
+download.file("https://opengeohub.org/spcg2020_validate_data.rds",
+							"spcg2020_validate_data.rds")
+```
+## Read data:
+```{r}
+train = readRDS("spg2020_train_data.rds")
+head(train)
+validate = readRDS("spcg2020_validate_data.rds")
+head(validate)
+setdiff(names(train), names(validate)) # name of the target variable
+```
+
+## Handle date and time (if you want)
+```{r}
+train$t = paste(train$date, train$time)
+head(train$t)
+train$t = strptime(train$t, format = "%Y-%m-%d %H:%M:%S", tz="UTC")
+head(train$t)
+library(sf)
+train_sf = st_as_sf(train, coords = c("long", "lat"), crs = 4326)
+```
+
+# Spacetime layout:
+
+What is the table size anyway?
+```{r}
+dim(train)
+```
+
+how many unique time steps do we have? What is their range?
+```{r}
+length(unique(train$t))
+range(train$t)
+24 * 356
+```
+
+What is the distribution of the time series? lenghts? Count how many
+points coincide with every individual point:
+```{r}
+i = st_intersects(train_sf, train_sf)
+hist(lengths(i))
+```
+
+How regular are the time steps?
+```{r}
+df = diff(sort(train$t))
+range(df[df > 0])
+df = as.numeric(df)
+hist(df[df > 0] / 3600, xlab = "hours", main = "time steps")
+```
+
+## Finding unique points
+
+```{r}
+n = nrow(train)
+duplicate = vector("logical", n)
+for (x in 1:n) {
+   eq = i[[x]] 
+   duplicate[eq[eq > x]] = TRUE
+}
+sum(!duplicate)
+```
+
+# Check the unique points
+```{r}
+pts = st_geometry(train_sf)[!duplicate]
+i2 = st_intersects(pts, train_sf)
+length(unique(unlist(i2))) == length(unlist(i2)) # so all are unique
+```
+# Space-time layout
+```{r}
+library(xts)
+l = lapply(i2, function(x) xts(train_sf$value_g[x], train_sf$t[x]))
+ts = do.call(cbind, l)
+colnames(ts) = paste0("POINT", 1:ncol(ts))
+head(ts[,1:10])
+image(as.matrix(ts))
+```
+
+What a mess!
+
+## A simpler approach:
+
+* assume we have daily data
+* assume id identifies the station
+
+```{r}
+ids = unique(train$id)
+# make groups for each station:
+l = lapply(ids, function(x)
+		xts(train$value_g[train$id==x], train$date[train$id == x]))
+im = do.call(cbind, l)
+names(im) = paste0("VAR", ids)
+image(as.matrix(im))
+plot(im[,1:10])
+```
+
+## Do we have validation points coinciding to the training points?
+```{r}
+unique(validate$id) %in% unique(train$id)
+any(unique(validate$id) %in% unique(train$id))
+which(unique(validate$id) %in% unique(train$id))
+nrow(validate[validate$id == 41,])
+nrow(validate)
+```
+
+```{r}
+library(stars)
+(st = st_as_stars(im))
+```
+
+## Add point features:
+
+```{r}
+l = lapply(ids, function(x)
+		train_sf[train$id==x,][1,])
+pts = st_geometry(do.call(rbind, l))
+st_sf = st_set_dimensions(st, 2, values = pts)
+library(rnaturalearth)
+ne = ne_countries(returnclass = "sf")
+st_means <- st_apply(st_sf, 2, mean, na.rm = TRUE) %>%
+	st_as_sf()
+plot(st_means, axes=TRUE, reset = FALSE, extent = ne)
+plot(ne_countries(returnclass = "sf"), add = TRUE, col = NA, border = 'grey')
+```
+
+Where are the validation data, spatially?
+```{r}
+plot(st_means, key.pos = NULL, col = 'grey', extent = ne, reset = FALSE,
+		 axes = TRUE)
+val_sf = st_as_sf(validate, coords = c("long", "lat"), crs = 4326)
+plot(val_sf, col = 'green', add = TRUE)
+```
+
+## Inverse distance weighted interpolation of means
+
+At validation sites:
+```{r}
+library(gstat)
+val_idw = idw(mean~1, st_means, val_sf)
+```
+
+At a regular grid:
+
+```{r}
+library(gstat)
+sf_use_s2(FALSE)
+idw_global = idw(mean~1, st_means, st_as_stars()[ne])
+plot(idw_global)
+plot(st_transform(idw_global[,,120:174], 3031))
+```
+
+# pointers to S2 in R:
+
+* https://www.r-spatial.org/r/2020/06/17/s2.html
+* https://cran.r-project.org/web/packages/sf/vignettes/sf7.html
+* CRAN package s2: https://github.com/r-spatial/s2
+
+* round is a better approximation of the world's shape, compared to flat. 
+* really: much, much better.
+* legacy datasets might present some problems when thrown on the sphere.
+
+# New PROJ:
+
+* https://www.r-spatial.org/r/2020/03/17/wkt.html
+* links therein
+
+* PROJ.4 strings are deprecated: stop using them
+* WKT is a more complete representation of CRS
+* WKT2 (GDAL >= 2.4 or so) is even better
+* drops the pivot datum WGS84 for conversions and transformations
+* adopts a large set of datum grids
+* stronger support for 3D datums/transformations
+* upcoming: supporting epochs and time-dependent CRS's
