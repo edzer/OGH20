@@ -1,4 +1,4 @@
----
+ ---
 title: "Handling and Analyzing Vector and Raster Data Cubes with R"
 author: "Edzer Pebesma"
 date: "`r Sys.Date()`"
@@ -20,7 +20,8 @@ All the material presented here, to the extent it is original, is available unde
 Source files (.Rmd) are found here: https://github.com/edzer/OGH20
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      paged.print = FALSE)
 ```
 
 ### Exercises
