@@ -52,7 +52,7 @@ range(train$t)
 What is the distribution of the time series? lenghts? Count how many
 points coincide with every individual point:
 ```{r}
-i = st_intersects(train_sf, train_sf)
+i = st_intersects(train_sf)
 hist(lengths(i))
 ```
 
@@ -171,7 +171,7 @@ plot(st_transform(idw_global[,,120:174], 3031))
 * https://cran.r-project.org/web/packages/sf/vignettes/sf7.html
 * CRAN package s2: https://github.com/r-spatial/s2
 
-* round is a better approximation of the world's shape, compared to flat. 
+* round is a better aproximation of the world's shape, compared to flat. 
 * really: much, much better.
 * legacy datasets might present some problems when thrown on the sphere.
 
@@ -179,6 +179,9 @@ plot(st_transform(idw_global[,,120:174], 3031))
 
 * https://www.r-spatial.org/r/2020/03/17/wkt.html
 * links therein
+
+"+proj=longlat +datum=WGS84"
+"+init=epsg:4326"
 
 * PROJ.4 strings are deprecated: stop using them
 * WKT is a more complete representation of CRS
